@@ -1,9 +1,9 @@
 import uuid
 import cv2
-import numpy as np
-from fer import FER
+from fer.fer import FER
 from app.db.database import SessionLocal
 from app.models.emotion import Emotion
+from app.models.emotion_type import EmotionType
 from app.types.modality_enum import ModalityEnum
 from app.utils.base64 import base64_to_image
 from app.types.emotions_request import EmotionRequest
@@ -34,9 +34,10 @@ class EmotionService:
             elif image.shape[2] == 4:  # RGBA
                 image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
 
+            # Detecta emoções
             emotions = self._detector.detect_emotions(image)
 
-            # Caso nenhuma emoção seja detectada
+            # Caso nenhuma emoção seja detectada → retorna unknown e NÃO salva
             if not emotions:
                 res = EmotionResponse(
                     user_id=user_id,
@@ -62,14 +63,19 @@ class EmotionService:
             if not user_id or not timestamp:
                 raise ValueError("Campos obrigatórios ausentes: user_id e timestamp.")
 
+            # Busca o tipo de emoção
+            emotion_type = db.query(EmotionType).filter_by(name=dominant_emotion).first()
+            if not emotion_type:
+                raise ValueError(f"Tipo de emoção '{dominant_emotion}' não encontrado na tabela emotions_type.")
+
             # Cria registro no banco
             emotion_entry = Emotion(
                 id=uuid.uuid4(),
-                user_id=user_id,
                 modality=ModalityEnum.video,
-                emotion=dominant_emotion,
+                emotion_type_id=emotion_type.id,
                 confidence=confidence_score,
-                timestamp=timestamp
+                timestamp=timestamp,
+                user_id=user_id
             )
 
             db.add(emotion_entry)
