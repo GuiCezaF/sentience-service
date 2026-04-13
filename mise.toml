@@ -5,6 +5,10 @@ uv = "latest"
 [settings]
 python.uv_venv_auto = "create|source"
 
+[tasks.dev]
+description = "Start development server"
+run = "uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
 [tasks.test]
 description = "Run automated tests"
 run = "uv run pytest"
