@@ -2,15 +2,23 @@ services:
   web:
     build: .
     container_name: emotion-api
+    restart: on-failure
     ports:
       - "8001:8000"
     networks:
       - emotion-network
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - .:/app
     env_file: .env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
 
   db:
     image: postgres:18-alpine3.22
@@ -26,6 +34,11 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:

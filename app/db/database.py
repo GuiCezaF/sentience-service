@@ -8,10 +8,10 @@ DATABASE_URL = envs("DATABASE_URL")
 
 engine = create_engine(
     DATABASE_URL,
-    pool_size=10,         # número máximo de conexões persistentes
-    max_overflow=20,      # número máximo de conexões extras que podem ser criadas além do pool
-    pool_timeout=30,      # tempo de espera para pegar uma conexão
-    pool_recycle=1800,    # recicla a conexão após X segundos
+    pool_size=10,         # max persistent connections
+    max_overflow=20,      # max extra connections allowed beyond pool_size
+    pool_timeout=30,      # seconds to wait for a connection from the pool
+    pool_recycle=1800,    # recycle connections after X seconds
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

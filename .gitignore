@@ -201,3 +201,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AI Agents
+.agent/
+.cursor/
+
+# ML model
+ml-model/*.onnx

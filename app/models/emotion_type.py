@@ -15,7 +15,7 @@ class EmotionType(Base):
     name = Column(String(50), unique=True, nullable=False)  # Ex: "happy", "sad", "angry"
     description = Column(String(255), nullable=True)
 
-    # Relacionamento com emoções
+    # Relationship with emotions
     emotions = relationship("Emotion", back_populates="emotion_type")
 
     def __repr__(self):

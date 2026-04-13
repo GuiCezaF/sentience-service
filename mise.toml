@@ -1,0 +1,16 @@
+[tools]
+python = "3.12"
+uv = "latest"
+
+[settings]
+python.uv_venv_auto = "create|source"
+
+[tasks.test]
+description = "Run automated tests"
+run = "uv run pytest"
+env = { PYTHONPATH = "." }
+
+[tasks.pytest]
+description = "Run automated tests (alias for pytest)"
+run = "uv run pytest"
+env = { PYTHONPATH = "." }

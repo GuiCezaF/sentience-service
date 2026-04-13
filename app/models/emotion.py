@@ -16,7 +16,7 @@ class Emotion(Base):
 
     user_id = Column(String(255), nullable=False)
 
-    # Referência ao tipo de emoção
+    # Reference to the emotion type
     emotion_type_id = Column(UUID(as_uuid=True), ForeignKey("emotion_types.id"), nullable=False)
     emotion_type = relationship("EmotionType", back_populates="emotions")
 

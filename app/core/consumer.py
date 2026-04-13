@@ -5,7 +5,7 @@ from app.services.emotion_service import EmotionService
 
 
 async def consume_frames():
-    """Loop para consumir frames da lista no Redis e responder no canal Pub/Sub"""
+    """Async loop that consumes frames from the Redis list and publishes results to the Pub/Sub channel."""
     service = EmotionService()
     while True:
         try:
@@ -13,10 +13,9 @@ async def consume_frames():
             if frame:
                 _, payload = frame
                 data = json.loads(payload)
-
                 result = service.process_emotion(data)
                 await redis.publish(REDIS_CHANNEL, result)
 
         except Exception as e:
-            print(f"[FastAPI] Erro no consumo: {e}")
+            print(f"[FastAPI] Error consuming frame: {e}")
             await asyncio.sleep(1)

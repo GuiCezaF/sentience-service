@@ -6,9 +6,11 @@ psycopg2-binary
 python-dotenv
 redis[hiredis]
 numpy
-opencv-python-headless==4.8.1.78
-opencv-contrib-python-headless==4.8.1.78
-fer
-moviepy==1.0.3
-Pillow==9.5.0
-tensorflow
+opencv-python-headless
+onnxruntime
+
+# Testing
+pytest
+pytest-asyncio
+pytest-mock
+httpx

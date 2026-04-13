@@ -1,81 +1,75 @@
 import uuid
 import cv2
-from fer.fer import FER
+import numpy as np
+import onnxruntime as ort
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.db.database import SessionLocal
 from app.models.emotion import Emotion
 from app.models.emotion_type import EmotionType
-from app.types.modality_enum import ModalityEnum
-from app.utils.base64 import base64_to_image
+from app.settings import EMOTION_MODEL_PATH
 from app.types.emotions_request import EmotionRequest
 from app.types.emotions_response import EmotionResponse
-from sqlalchemy.exc import SQLAlchemyError
+from app.types.modality_enum import ModalityEnum
+from app.utils.base64 import base64_to_image
+
+EMOTION_LABELS = ["angry", "disgust", "fear", "happy", "neutral", "sad", "surprise"]
 
 
 class EmotionService:
     def __init__(self):
-        # Desativa MTCNN para evitar erro de GPU (usa dlib, CPU only)
-        self._detector = FER(mtcnn=False)
+        self._session = ort.InferenceSession(
+            EMOTION_MODEL_PATH,
+            providers=["CPUExecutionProvider"],
+        )
+        self._face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
 
-    def process_emotion(self, data: EmotionRequest) -> EmotionResponse:
+    def process_emotion(self, data: EmotionRequest) -> str:
         db = SessionLocal()
         try:
-            user_id = data.get("correlation_id", None)
-            timestamp = data.get("timestamp", None)
-            frame = data.get("frame", None)
+            user_id = data.correlation_id if hasattr(data, "correlation_id") else data.get("correlation_id")
+            timestamp = data.timestamp if hasattr(data, "timestamp") else data.get("timestamp")
+            frame = data.frame if hasattr(data, "frame") else data.get("frame")
 
             if not frame:
-                raise ValueError("Frame (base64) não fornecido.")
+                raise ValueError("Frame (base64) not provided.")
 
             image = base64_to_image(frame)
+            face = self._detect_face(image)
 
-            # Garante que a imagem esteja em formato RGB (3 canais)
-            if image.ndim == 2:
-                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-            elif image.shape[2] == 4:  # RGBA
-                image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
-
-            # Detecta emoções
-            emotions = self._detector.detect_emotions(image)
-
-            # Caso nenhuma emoção seja detectada → retorna unknown e NÃO salva
-            if not emotions:
-                res = EmotionResponse(
+            if face is None:
+                return EmotionResponse(
                     user_id=user_id,
                     timestamp=timestamp,
                     emotion="unknown",
-                    confidence=0.0
-                )
-                return res.model_dump_json()
+                    confidence=0.0,
+                ).model_dump_json()
 
-            # Extrai emoções detectadas (primeiro rosto)
-            emotion_response = emotions[0].get("emotions", {})
-            dominant_emotion = max(emotion_response, key=emotion_response.get)
-            confidence_score = emotion_response[dominant_emotion]
+            dominant_emotion, confidence_score = self._predict(face)
 
             response = EmotionResponse(
                 user_id=user_id,
                 timestamp=timestamp,
                 emotion=dominant_emotion,
-                confidence=confidence_score
+                confidence=confidence_score,
             )
 
-            # Valida campos obrigatórios
             if not user_id or not timestamp:
-                raise ValueError("Campos obrigatórios ausentes: user_id e timestamp.")
+                raise ValueError("Missing required fields: user_id and timestamp.")
 
-            # Busca o tipo de emoção
             emotion_type = db.query(EmotionType).filter_by(name=dominant_emotion).first()
             if not emotion_type:
-                raise ValueError(f"Tipo de emoção '{dominant_emotion}' não encontrado na tabela emotions_type.")
+                raise ValueError(f"Emotion type '{dominant_emotion}' not found in emotion_types table.")
 
-            # Cria registro no banco
             emotion_entry = Emotion(
                 id=uuid.uuid4(),
                 modality=ModalityEnum.video,
                 emotion_type_id=emotion_type.id,
                 confidence=confidence_score,
                 timestamp=timestamp,
-                user_id=user_id
+                user_id=user_id,
             )
 
             db.add(emotion_entry)
@@ -86,10 +80,36 @@ class EmotionService:
 
         except SQLAlchemyError as e:
             db.rollback()
-            raise Exception(f"Database error: {str(e)}")
+            raise Exception(f"Database error: {str(e)}") from e
 
         except Exception as e:
-            raise Exception(f"Error processing emotion: {str(e)}")
+            raise Exception(f"Error processing emotion: {str(e)}") from e
 
         finally:
             db.close()
+
+    def _detect_face(self, image: np.ndarray) -> np.ndarray | None:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
+        faces = self._face_cascade.detectMultiScale(
+            gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+        )
+
+        if len(faces) == 0:
+            return None
+
+        x, y, w, h = faces[0]
+        face_crop = gray[y : y + h, x : x + w]
+        return cv2.resize(face_crop, (48, 48))
+
+    def _predict(self, face: np.ndarray) -> tuple[str, float]:
+        tensor = face.astype(np.float32) / 255.0
+        tensor = tensor[np.newaxis, np.newaxis, :, :]  # (1, 1, 48, 48)
+
+        input_name = self._session.get_inputs()[0].name
+        outputs = self._session.run(None, {input_name: tensor})[0][0]
+
+        exp = np.exp(outputs - np.max(outputs))
+        probabilities = exp / exp.sum()
+
+        idx = int(np.argmax(probabilities))
+        return EMOTION_LABELS[idx], float(probabilities[idx])
