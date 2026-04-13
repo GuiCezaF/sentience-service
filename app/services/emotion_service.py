@@ -6,8 +6,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.database import SessionLocal
 from app.models.emotion import Emotion
-from app.models.emotion_type import EmotionType
 from app.settings import EMOTION_MODEL_PATH
+from app.types.emotion_type_enum import EmotionTypeEnum
 from app.types.emotions_request import EmotionRequest
 from app.types.emotions_response import EmotionResponse
 from app.types.modality_enum import ModalityEnum
@@ -59,14 +59,10 @@ class EmotionService:
             if not user_id or not timestamp:
                 raise ValueError("Missing required fields: user_id and timestamp.")
 
-            emotion_type = db.query(EmotionType).filter_by(name=dominant_emotion).first()
-            if not emotion_type:
-                raise ValueError(f"Emotion type '{dominant_emotion}' not found in emotion_types table.")
-
             emotion_entry = Emotion(
                 id=uuid.uuid4(),
                 modality=ModalityEnum.video,
-                emotion_type_id=emotion_type.id,
+                emotion_type=EmotionTypeEnum(dominant_emotion),
                 confidence=confidence_score,
                 timestamp=timestamp,
                 user_id=user_id,

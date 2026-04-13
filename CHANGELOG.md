@@ -23,9 +23,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `EMOTION_MODEL_PATH` setting in `app/settings.py` — configurable via environment variable, defaults to `ml-model/emotion_model.onnx`
 - `HEALTHCHECK` instruction added to `Dockerfile`
 - Face detection using OpenCV built-in Haar Cascade (`haarcascade_frontalface_default.xml`) — zero extra dependencies
+- Database migration tasks to `mise.toml` (`migrate`, `makemigrations`).
+- Automated database migrations on startup for both Docker (via `entrypoint.sh`) and local development (via `mise run dev`).
+- Documentation for database migrations in `README.md`.
 
 ### Fixed
-- Fixed bug in `EmotionService.process_emotion` where it attempted to access Pydantic model fields using `.get()`, causing an `AttributeError`. Now handles both Pydantic models and dictionaries.
+- Fixed `KeyError: 'angry'` in `EmotionService` by using the standard Enum value constructor `EmotionTypeEnum(value)` instead of member selection.
+- Fixed `UnicodeDecodeError` in Redis consumer by adding a safeguard for non-JSON payloads.
+- Fixed `alembic/env.py` to remove reference to deleted `EmotionType` model.
+- Fixed "uvicorn not found" error in Docker container by adding an anonymous volume for `/app/.venv` in `docker-compose.yaml`.
+- Fixed Redis connection issues in Docker by adding a dedicated `redis` service and updating configuration to use internal network.
+- Improved `consume_frames` robustness with a connection retry loop (ping) to ensure Redis is available before processing.
+- Added input/output monitoring logs to Redis consumer for better observability.
+
+### Changed
+- Migrated `EmotionType` from a database table to a Python `Enum` (`EmotionTypeEnum`) to simplify the schema and improve performance.
+- Refactored `EmotionService` to remove unnecessary database lookups for emotion types.
+
+### Removed
+- Removed `emotion_types` table and its corresponding model `app/models/emotion_type.py`.
 
 ### Removed
 - `fer` dependency

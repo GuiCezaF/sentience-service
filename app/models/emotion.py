@@ -7,6 +7,7 @@ from app.db.database import Base
 
 from app.models.user import User
 from app.types.modality_enum import ModalityEnum 
+from app.types.emotion_type_enum import EmotionTypeEnum
 
 class Emotion(Base):
     __tablename__ = "emotions"
@@ -16,9 +17,8 @@ class Emotion(Base):
 
     user_id = Column(String(255), nullable=False)
 
-    # Reference to the emotion type
-    emotion_type_id = Column(UUID(as_uuid=True), ForeignKey("emotion_types.id"), nullable=False)
-    emotion_type = relationship("EmotionType", back_populates="emotions")
+    # Reference to the emotion type as an Enum
+    emotion_type = Column(Enum(EmotionTypeEnum, name="emotion_type_enum"), nullable=False)
 
     confidence = Column(Float, nullable=False)     # Ex: 0.95
     timestamp = Column(DateTime(timezone=True), server_default=func.now())

@@ -11,7 +11,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from app.db.database import DATABASE_URL, Base
 from app.models.emotion import Emotion
 from app.models.user import User
-from app.models.emotion_type import EmotionType
 
 config = context.config
 fileConfig(config.config_file_name)

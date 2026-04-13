@@ -51,6 +51,30 @@ Before you begin, ensure you have the following installed:
    uv pip install -r requirements.txt
    ```
 
+## 🗄️ Database Migrations
+
+This project uses **Alembic** for database schema management.
+
+### Using mise (Recommended)
+```bash
+# Generate a new migration after model changes
+# Use -m "message" to specify a description
+mise run makemigrations --message "description of changes"
+
+# Apply all pending migrations
+mise run migrate
+```
+
+### Using Alembic directly
+```bash
+# Generate a new migration
+uv run alembic revision --autogenerate -m "description"
+
+# Apply migrations
+uv run alembic upgrade head
+```
+
+
 ## 🏃 Running the Application
 
 ### Using mise (Recommended)

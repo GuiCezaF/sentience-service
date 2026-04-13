@@ -7,7 +7,7 @@ python.uv_venv_auto = "create|source"
 
 [tasks.dev]
 description = "Start development server"
-run = "uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+run = "uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
 [tasks.test]
 description = "Run automated tests"
@@ -18,3 +18,11 @@ env = { PYTHONPATH = "." }
 description = "Run automated tests (alias for pytest)"
 run = "uv run pytest"
 env = { PYTHONPATH = "." }
+
+[tasks.migrate]
+description = "Apply database migrations"
+run = "uv run alembic upgrade head"
+
+[tasks.makemigrations]
+description = "Generate a new database migration"
+run = "uv run alembic revision --autogenerate -m \"{{arg(name='message', default='auto')}}\""
